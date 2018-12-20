@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Text.RegularExpressions;
 
 namespace Homework_1_Module_5
 {
@@ -13,17 +14,13 @@ namespace Homework_1_Module_5
     {
         static void Main(string[] args)
         {
-            SqlConnection con = new SqlConnection();
-            string connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
-            con.ConnectionString = connectionString;
-            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM Area; SELECT COUNT(*) as countArea FROM Area", con);
+            SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString);
+            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM Area", con);
             SqlCommandBuilder cmdBldr = new SqlCommandBuilder(da);
             DataSet ds = new DataSet();
 
             da.Fill(ds);
             
-            int countArea = Convert.ToInt32(ds.Tables[1].Rows[0]["countArea"]);
-            Area[] Areas = new Area[countArea];
             List<Area> areas = new List<Area>();
             
             foreach (DataRow row in ds.Tables[0].Rows)
@@ -64,10 +61,10 @@ namespace Homework_1_Module_5
                 .Where(w=>w.TypeArea == 1)
                 .OrderByDescending(o=> o.Name)
                 .Select(s => new{ s.Name, s.FullName, s.IP });
-           
-            foreach (var item in queryA)
+            // Проверка
+            foreach (var i in queryA)
             {
-                Console.WriteLine("{0}\t {1}\t {2}\t", item.Name, item.FullName, item.IP);
+                Console.WriteLine("{0}\t {1}\t {2}\t", i.Name, i.FullName, i.IP);
             }
 
             //Подзадание b
@@ -78,9 +75,10 @@ namespace Homework_1_Module_5
             var queryB = from a in areas
                          where a.ParentId == 0
                          select new { a.Name, a.FullName, a.IP };
-            foreach (var item in queryB)
+            // Выполнение запроса
+            foreach (var i in queryB)
             {
-                Console.WriteLine("{0}\t {1}\t {2}\t", item.Name, item.FullName, item.IP);
+                Console.WriteLine("{0}\t {1}\t {2}\t", i.Name, i.FullName, i.IP);
             }
 
             //Подзадание c
@@ -89,13 +87,18 @@ namespace Homework_1_Module_5
             Console.WriteLine("\nПодзадание c\n");
             Console.ResetColor();
             int[] Pavilion = { 1, 2, 3, 4, 5, 6 };  // Создание массива Pavilion
+            //Для повышения эффективности в работе с локальной коллекцией тело подзапроса выносится в отдельный запрос pavilion
+            var pavilion = Pavilion
+                .Where(w2 => w2 % 2 == 0)
+                .Select(s2 => s2);
 
             var queryC = areas
-                .Where(w=>w.PavilionId == (Pavilion.Where(w2 => w2 % 2 == 0).Select(s2 => s2).First() | Pavilion.Where(w2 => w2 % 2 == 0).Select(s2 => s2).ElementAt(1) | Pavilion.Where(w2 => w2 % 2 == 0).Select(s2=>s2).Last()))
+                .Where(w=>w.PavilionId == (pavilion.First() | pavilion.ElementAt(1) | pavilion.Last()))
                 .Select(s => new { s.PavilionId, s.Name, s.FullName, s.IP });
-            foreach (var item in queryC)
+            // Проверка
+            foreach (var i in queryC)
             {
-                Console.WriteLine("{0}\t {1}\t {2}\t", item.PavilionId, item.Name, item.FullName, item.IP);
+                Console.WriteLine("{0}\t {1}\t {2}\t {3}\t", i.PavilionId, i.Name, i.FullName, i.IP);
             }
 
             //Подзадание d
@@ -103,16 +106,52 @@ namespace Homework_1_Module_5
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\nПодзадание d\n");
             Console.ResetColor();
+            //Для повышения эффективности в работе с локальной коллекцией тело подзапроса выносится в отдельный запрос pavilion2
+            var pavilion2 = from p in Pavilion
+                            where p % 2 == 0
+                            select p;
+
             var queryD = from a in areas
-                         where a.PavilionId == ((from p in Pavilion where p % 2 == 0 select p).First() | (from p in Pavilion where p % 2 == 0 select p).ElementAt(1) | (from p in Pavilion where p % 2 == 0 select p).Last())
+                         where a.PavilionId == (pavilion2.First() | pavilion2.ElementAt(1) | pavilion2.Last())
                          select new { a.PavilionId, a.Name, a.FullName, a.IP };
-            foreach (var item in queryD)
+            // Проверка
+            foreach (var i in queryD)
             {
-                Console.WriteLine("{0}\t {1}\t {2}\t {3}\t", item.PavilionId, item.Name, item.FullName, item.IP);
+                Console.WriteLine("{0}\t {1}\t {2}\t {3}\t", i.PavilionId, i.Name, i.FullName, i.IP);
             }
 
             //Подзадание e
 
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\nПодзадание e\n");
+            Console.ResetColor();
+
+            var queryE = from a in areas
+                         let newWorkingPeople = a.WorkingPeople
+                         where newWorkingPeople > 1
+                         select a;
+            // Проверка
+            foreach (var i in queryE)
+            {
+                Console.WriteLine("{0} ", i.WorkingPeople);
+            }
+
+            //Подзадание f
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\nПодзадание f\n");
+            Console.ResetColor();
+
+            var queryF = from a in areas
+                         select new { a.ParentId, a.FullName, a.Dependence }
+                         into temp
+                         where temp.Dependence > 0
+                         select new { temp.ParentId, temp.FullName, temp.Dependence };
+            // Проверка
+            foreach (var i in queryF)
+            {
+                Console.WriteLine("{0}\t {1}\t {2}\t ", i.ParentId, i.FullName, i.Dependence);
+            }
 
 
             Console.Read();
